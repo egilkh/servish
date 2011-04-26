@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * A slightly simple webserver for serving a folder
+ * A slightly simple webserver for serving a folder.
  */
 // requires
 var http = require('http');
@@ -56,13 +56,18 @@ var request_cb = function (req, res) {
 			fs.stat(requestedDocument, function(err, stats) {
 				if (err) { throw err; }
 				if (stats.isFile()) {
+
 					var ext = path.extname(path.basename(requestedDocument));
 					var mime = defaults.mime.types[ext] ? defaults.mime.types[ext] : defaults.mime.types['.txt'];
+
 					res.setHeader('Content-Type', mime);
 					res.setHeader('Content-Length', stats.size);
 					res.writeHead(200);
+
 					fs.readFile(requestedDocument, 'utf8', function(err, data) {
 						if (err) { throw err; }
+						// i wonder if this means we block while writing ?
+						// TODO probably a more elegant way
 						res.write(data, 'utf8');
 						res.end();
 					});
@@ -86,15 +91,8 @@ var request_cb = function (req, res) {
 
 var tryListen = function (serv, port) {
 	util.log('Servish, trying to bind: ' + port);
-	// TODO
-	// this triggers twice, but I'm not sure which event this is
-	// so I can't remove it from the listeners.
-	serv.listen(port, defaults.ip, serverBound);
+	serv.listen(port, defaults.ip);
 };
-
-var serverBound = function () {
-	// we could probably do fancy tricks over here
-}
 
 // TODO
 // here we should read .servish from $HOME and extend our defaults
