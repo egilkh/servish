@@ -118,4 +118,9 @@ server.on('error', function (e) {
 });
 tryListen(server, currentPort);
 
+process.on('SIGINT', function () {
+	util.log('Got SIGINT, shuting down.');
+	server.close();
+});
+
 util.log('Servish, up and running (probably)!');
