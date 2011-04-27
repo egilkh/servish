@@ -31,6 +31,8 @@ var defaults = {
 	}
 }
 
+// TODO Real simple HTML5 documents for Error, 404 and dir listing
+
 // basepath for this one
 var docRoot = process.cwd();
 
@@ -64,13 +66,17 @@ var request_cb = function (req, res) {
 					res.setHeader('Content-Length', stats.size);
 					res.writeHead(200);
 
-					fs.readFile(requestedDocument, 'utf8', function(err, data) {
-						if (err) { throw err; }
-						// i wonder if this means we block while writing ?
-						// TODO probably a more elegant way
-						res.write(data, 'utf8');
-						res.end();
-					});
+					// create stream and pipe it over closing the res when done
+					fs.createReadStream(requestedDocument, {
+						encoding : 'utf8'
+					}).on('end', function () {
+						util.log('Served file: ' + this.path);
+						//console.log(util.inspect(this));
+					}).on('error', function(ex){
+						// TODO
+						util.log('Error read stream, ex: ' + ex);
+					}).pipe(res);
+
 				} else if (stats.isDirectory()) {
 					// TODO pretty print directory
 					var msg = '200 - Directory Listing.';
