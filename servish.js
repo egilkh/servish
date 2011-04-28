@@ -28,24 +28,34 @@ var defaults = {
 			'.png': 'image/png',
 			'.jpg': 'image/jpg'
 		}
-	}
+	},
+	// a quite simple HTML5 template
+	template:
+'<!DOCTYPE html>\n\
+<html>\n\
+<head>\n\
+	<title>{title}</title>\n\
+</head>\n\
+<body>\n\
+<h1>{title}</h1>\n\
+	{content}\n\
+</body>\n\
+</html>'
 }
 
 // TODO Real simple HTML5 documents for Error, 404 and dir listing
-var docs = {
-	template:'<!DOCTYPE html>\n\
-		<html>\n\
-		<head>\n\
-			<title>{title}</title>\n\
-		</head>\n\
-		<body>\n\
-			<h1>{title}</h1>\n\
-			{content}\n\
-		</body>\n\
-		</html>',
+var pageContent = {
 	notFound: {
-		title: 'File not found',
+		title: '404 - File not found',
 		content: 'This is not the file you are looking for.'
+	},
+	error: {
+		title: '500 - Error',
+		content: 'Do not know what to do.'
+	},
+	directoryListing : {
+		title: 'Directory Listing',
+		content: 'This should never be shown.'
 	}
 };
 
@@ -69,24 +79,29 @@ var swapRecursive = function (t, from, to) {
 	return t;
 };
 
-var request_cb = function (req, res) {
+var requestCallback = function (req, res) {
 
-	res.setHeader('Content-Type', defaults.mime.types['.txt']); // default mime!
 	res.setHeader('Content-Encoding', 'utf-8');
 	res.setHeader('Connection', 'close');
 
 	var requestUrl = url.parse(req.url);
 	var requestedDocument = path.join(docRoot, requestUrl.pathname);
 
-	util.log('Connection from client: ' + requestUrl.pathname  + ' (' + req.socket.remoteAddress + ').');
+	var remoteAddress = req.socket.remoteAddress;
+
+	util.log('Connection from client: ' + requestUrl.pathname  + ' (' + remoteAddress + ').');
 
 	path.exists(requestedDocument, function(exists) {
 		if (!exists) {
-			var output = fillTemplate(docs.template, docs.notFound);
-			res.setHeader('Content-Length', output.length);
-			res.setHeader('Content-Type', defaults.mime.types['.html']);
-			res.writeHead(404);
+			var output = fillTemplate(defaults.template, pageContent.notFound);
+			//res.setHeader('Content-Length', output.length);
+			//res.setHeader('Content-Type', defaults.mime.types['.html']);
+			res.writeHead(404, {
+				'Content-Length': output.length,
+				'Content-Type': defaults.mime.types['.html']
+			});
 			res.end(output);
+			util.log('Served: 404 (' + remoteAddress + ').');
 		} else {
 			fs.stat(requestedDocument, function(err, stats) {
 				if (err) { throw err; }
@@ -95,16 +110,15 @@ var request_cb = function (req, res) {
 					var ext = path.extname(path.basename(requestedDocument));
 					var mime = defaults.mime.types[ext] ? defaults.mime.types[ext] : defaults.mime.types['.txt'];
 
-					res.setHeader('Content-Type', mime);
-					res.setHeader('Content-Length', stats.size);
-					res.writeHead(200);
-
-					// create stream and pipe it over closing the res when done
+					res.writeHead(200, {
+						'Content-Type': mime,
+						'Content-Length': stats.size
+					});
+					// create stream and pipe it, closes res when done
 					fs.createReadStream(requestedDocument, {
 						encoding : 'utf8'
 					}).on('end', function () {
-						util.log('Served file: ' + this.path);
-						//console.log(util.inspect(this));
+						util.log('Served: ' + this.path + '(' + remoteAddress + ').');
 					}).on('error', function(ex){
 						// TODO
 						util.log('Error read stream, ex: ' + ex);
@@ -112,16 +126,20 @@ var request_cb = function (req, res) {
 
 				} else if (stats.isDirectory()) {
 					// TODO pretty print directory
-					var msg = '200 - Directory Listing.';
-					res.setHeader('Content-Length', msg.length);
-					res.writeHead(200);
-					res.end(msg);
+					var output = fillTemplate(defaults.template, pageContent.directoryListing);
+					//res.setHeader('Content-Length', msg.length);
+					res.writeHead(200, {
+						'Content-Length': output.length
+					});
+					res.end(output);
+					util.log('Served: Directory Listing (' + remoteAddress + ').');
 				} else {
-					// this means we no want to serve them people
-					var msg = '500 - I no know what do!';
-					res.setHeader('Content-Length', msg.length);
-					res.writeHead(500);
-					res.end(msg);
+					var output = fillTemplate(defaults.template, pageContent.error);
+					res.writeHead(500, {
+						'Content-Length': output.length
+					});
+					res.end(output);
+					util.log('We nowt sure what to do (' + remoteAddress + ').');
 				}
 			});
 		}
@@ -144,7 +162,7 @@ if (defaults.port.last < defaults.port.first) {
 	process.exit(1);
 }
 
-var server = http.createServer(request_cb);
+var server = http.createServer(requestCallback);
 var currentPort = defaults.port.first;
 server.on('error', function (e) {
 	if (e.code == "EADDRINUSE") { // probably a port problem
