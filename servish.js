@@ -32,11 +32,43 @@ var defaults = {
 }
 
 // TODO Real simple HTML5 documents for Error, 404 and dir listing
+var docs = {
+	template:'<!DOCTYPE html>\n\
+		<html>\n\
+		<head>\n\
+			<title>{title}</title>\n\
+		</head>\n\
+		<body>\n\
+			<h1>{title}</h1>\n\
+			{content}\n\
+		</body>\n\
+		</html>',
+	notFound: {
+		title: 'File not found',
+		content: 'This is not the file you are looking for.'
+	}
+};
 
 // basepath for this one
 var docRoot = process.cwd();
 
 // functions
+var fillTemplate = function (template, values) {
+	var t = template;
+	for (v in values) {
+		t = swapRecursive(t, '{' + v + '}', values[v]);
+	}
+	return t;
+};
+
+var swapRecursive = function (t, from, to) {
+	t = t.replace(from, to);
+	if (t.indexOf(from) > -1) {
+		t = swapRecursive(t, from, to);
+	}
+	return t;
+};
+
 var request_cb = function (req, res) {
 
 	res.setHeader('Content-Type', defaults.mime.types['.txt']); // default mime!
@@ -50,10 +82,11 @@ var request_cb = function (req, res) {
 
 	path.exists(requestedDocument, function(exists) {
 		if (!exists) {
-			var msg = '404 - File not found.';
-			res.setHeader('Content-Length', msg.length);
+			var output = fillTemplate(docs.template, docs.notFound);
+			res.setHeader('Content-Length', output.length);
+			res.setHeader('Content-Type', defaults.mime.types['.html']);
 			res.writeHead(404);
-			res.end(msg);
+			res.end(output);
 		} else {
 			fs.stat(requestedDocument, function(err, stats) {
 				if (err) { throw err; }
