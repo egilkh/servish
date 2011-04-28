@@ -85,8 +85,7 @@ var swapRecursive = function (t, from, to) {
 
 var requestCallback = function (req, res) {
 
-	res.setHeader('Content-Encoding', 'utf-8');
-	res.setHeader('Connection', 'close');
+	res.setHeader('Connection', 'close'); // we no accept long calls
 
 	var requestUrl = url.parse(req.url);
 	var requestedDocument = path.join(documentRoot, requestUrl.pathname);
