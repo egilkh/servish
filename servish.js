@@ -36,10 +36,10 @@ var defaults = {
 <head>\n\
 	<title>{title}</title>\n\
 </head>\n\
-<body>\n\
+<body>\n\n\
 <h1>{title}</h1>\n\
-	{content}\n\
-</body>\n\
+{content}\n\
+\n</body>\n\
 </html>'
 }
 
@@ -127,12 +127,28 @@ var requestCallback = function (req, res) {
 				} else if (stats.isDirectory()) {
 					// TODO pretty print directory
 					var output = fillTemplate(defaults.template, pageContent.directoryListing);
-					//res.setHeader('Content-Length', msg.length);
-					res.writeHead(200, {
-						'Content-Length': output.length
+					fs.readdir(requestedDocument, function(err, files) {
+						if (err) { throw err; }
+
+						var page = {
+							title:requestUrl.pathname,
+							content:""
+						};
+						page.content = '<ul>\n';
+						for (f in files) {
+							if (files[f].substr(0, 1) == ".") {
+								continue;
+							}
+							page.content += '\t<li><a href="' + files[f] + '">' + files[f] + '</a></li>\n';
+						}
+						page.content += '</ul>\n';
+						var output = fillTemplate(defaults.template, page);
+						res.writeHead(200, {
+							'Content-Length': output.length
+						});
+						res.end(output);
+						util.log('Served: Directory Listing (' + remoteAddress + ').');
 					});
-					res.end(output);
-					util.log('Served: Directory Listing (' + remoteAddress + ').');
 				} else {
 					var output = fillTemplate(defaults.template, pageContent.error);
 					res.writeHead(500, {
