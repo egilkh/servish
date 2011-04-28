@@ -10,6 +10,8 @@ var url = require('url');
 var fs = require('fs');
 
 var defaults = {
+
+	// ip to listen to, null means all ip's
 	ip: null, // listen to all ip's
 
 	// first and last port to try out when starting to listen
@@ -18,17 +20,19 @@ var defaults = {
 		first: 8080,
 		last: 8100
 	},
-	// default mime types
+
+	// default mime types, what I plan to serve ze best
 	mime: {
 		types: {
-			'.txt': 'text/plain',
-			'.js': 'text/javascript',
-			'.css': 'text/css',
-			'.html': 'text/html',
-			'.png': 'image/png',
-			'.jpg': 'image/jpg'
+			'.txt': 'text/plain; charset=utf-8',
+			'.js': 'text/javascript; charset=utf-8',
+			'.css': 'text/css; charset=utf-8',
+			'.html': 'text/html; charset=utf-8',
+			'.png': 'image/png; charset=utf-8',
+			'.jpg': 'image/jpg; charset=utf-8'
 		}
 	},
+
 	// a quite simple HTML5 template
 	template:
 '<!DOCTYPE html>\n\
@@ -43,7 +47,7 @@ var defaults = {
 </html>'
 }
 
-// TODO Real simple HTML5 documents for Error, 404 and dir listing
+// basic content for the various templates
 var pageContent = {
 	notFound: {
 		title: '404 - File not found',
@@ -60,7 +64,7 @@ var pageContent = {
 };
 
 // basepath for this one
-var docRoot = process.cwd();
+var documentRoot = process.cwd();
 
 // functions
 var fillTemplate = function (template, values) {
@@ -85,7 +89,7 @@ var requestCallback = function (req, res) {
 	res.setHeader('Connection', 'close');
 
 	var requestUrl = url.parse(req.url);
-	var requestedDocument = path.join(docRoot, requestUrl.pathname);
+	var requestedDocument = path.join(documentRoot, requestUrl.pathname);
 
 	var remoteAddress = req.socket.remoteAddress;
 
@@ -115,18 +119,17 @@ var requestCallback = function (req, res) {
 						'Content-Length': stats.size
 					});
 					// create stream and pipe it, closes res when done
+					// TODO Fix sending of binary content ?
 					fs.createReadStream(requestedDocument, {
 						encoding : 'utf8'
 					}).on('end', function () {
 						util.log('Served: ' + this.path + '(' + remoteAddress + ').');
 					}).on('error', function(ex){
 						// TODO
-						util.log('Error read stream, ex: ' + ex);
+						util.log('Error reading stream, ex: ' + ex);
 					}).pipe(res);
 
 				} else if (stats.isDirectory()) {
-					// TODO pretty print directory
-					var output = fillTemplate(defaults.template, pageContent.directoryListing);
 					fs.readdir(requestedDocument, function(err, files) {
 						if (err) { throw err; }
 
@@ -134,16 +137,19 @@ var requestCallback = function (req, res) {
 							title:requestUrl.pathname,
 							content:""
 						};
+
 						page.content = '<ul>\n';
 						for (f in files) {
-							if (files[f].substr(0, 1) == ".") {
+							if (files[f].substr(0, 1) == ".") { // don't show hidden files/folders
 								continue;
 							}
 							page.content += '\t<li><a href="' + files[f] + '">' + files[f] + '</a></li>\n';
 						}
 						page.content += '</ul>\n';
+
 						var output = fillTemplate(defaults.template, page);
 						res.writeHead(200, {
+							'Content-Type': defaults.mime.types['.html'],
 							'Content-Length': output.length
 						});
 						res.end(output);
@@ -162,14 +168,14 @@ var requestCallback = function (req, res) {
 	});
 };
 
-var serverBound = function (serv) {
+var serverBound = function (server) {
 	util.log('Servish, bound to ' + server.address().address + ':' + server.address().port + '.');
 };
 
 // TODO
 // here we should read .servish from $HOME and extend our defaults
 
-util.log('Servish, serving: ' + docRoot);
+util.log('Servish, serving: ' + documentRoot);
 
 if (defaults.port.last < defaults.port.first) {
 	util.log('Servish, you might have an error with your config (PORT).');
@@ -195,7 +201,6 @@ server.on('error', function (e) {
 }).listen(currentPort, defaults.ip, function() {
 	serverBound(this);
 });;
-//tryListen(server, currentPort);
 
 process.on('SIGINT', function () {
 	util.log('Got SIGINT, shuting down.');
