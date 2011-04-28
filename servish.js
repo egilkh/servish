@@ -146,14 +146,12 @@ var requestCallback = function (req, res) {
 	});
 };
 
-var tryListen = function (serv, port) {
-	util.log('Servish, trying to bind: ' + port);
-	serv.listen(port, defaults.ip);
+var serverBound = function (serv) {
+	util.log('Servish, bound to ' + server.address().address + ':' + server.address().port + '.');
 };
 
 // TODO
 // here we should read .servish from $HOME and extend our defaults
-
 
 util.log('Servish, serving: ' + docRoot);
 
@@ -166,18 +164,24 @@ var server = http.createServer(requestCallback);
 var currentPort = defaults.port.first;
 server.on('error', function (e) {
 	if (e.code == "EADDRINUSE") { // probably a port problem
+		if ((currentPort + 1) == defaults.port.last) {
+			util.log('No port in range to bind to, exiting.');
+			process.exit(1);
+		}
 		util.log('Servish, port in use. Retrying in 1s.');
 		setTimeout(function() {
-			// TODO Logic for port boundries
-			tryListen(server, ++currentPort);
+			server.removeAllListeners('listening'); // prevent double listening event
+			server.listen(++currentPort, defaults.ip, function() {
+				serverBound(this);
+			});
 		}, 1000);
 	}
-});
-tryListen(server, currentPort);
+}).listen(currentPort, defaults.ip, function() {
+	serverBound(this);
+});;
+//tryListen(server, currentPort);
 
 process.on('SIGINT', function () {
 	util.log('Got SIGINT, shuting down.');
 	server.close();
 });
-
-util.log('Servish, up and running (probably)!');
