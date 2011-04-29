@@ -21,6 +21,9 @@ var defaults = {
 		last: 8100
 	},
 
+	// should we show hidden files/folders (. files)
+	showHidden: false,
+
 	// default mime types, what I plan to serve ze best
 	mime: {
 		types: {
@@ -139,7 +142,7 @@ var requestCallback = function (req, res) {
 
 						page.content = '<ul>\n';
 						for (f in files) {
-							if (files[f].substr(0, 1) == ".") { // don't show hidden files/folders
+							if (files[f].substr(0, 1) == "." && !defaults.showHidden) {
 								continue;
 							}
 							page.content += '\t<li><a href="' + files[f] + '">' + files[f] + '</a></li>\n';
