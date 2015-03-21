@@ -33,7 +33,8 @@ var defaults = {
 			'.html': 'text/html; charset=utf-8',
 			'.png': 'image/png; charset=utf-8',
 			'.jpg': 'image/jpg; charset=utf-8'
-		}
+		},
+    binary: ['.jpg', '.png']
 	},
 
 	// a quite simple HTML5 template
@@ -120,11 +121,15 @@ var requestCallback = function (req, res) {
 						'Content-Type': mime,
 						'Content-Length': stats.size
 					});
+
+          var readOptions = {};
+          if (defaults.mime.binary.indexOf(ext) === -1) {
+            readOptions.encoding = 'utf8';
+          }
 					// create stream and pipe it, closes res when done
 					// TODO Fix sending of binary content ?
-					fs.createReadStream(requestedDocument, {
-						encoding : 'utf8'
-					}).on('end', function () {
+					fs.createReadStream(requestedDocument, readOptions)
+          .on('end', function () {
 						util.log('Served: ' + this.path + '(' + remoteAddress + ').');
 					}).on('error', function(ex){
 						// TODO
@@ -145,6 +150,7 @@ var requestCallback = function (req, res) {
 							if (files[f].substr(0, 1) == "." && !defaults.showHidden) {
 								continue;
 							}
+
 							page.content += '\t<li><a href="' + files[f] + '">' + files[f] + '</a></li>\n';
 						}
 						page.content += '</ul>\n';
