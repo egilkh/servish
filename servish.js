@@ -98,7 +98,7 @@ var requestCallback = function (req, res) {
 
 	util.log('Connection from client: ' + requestUrl.pathname  + ' (' + remoteAddress + ').');
 
-	path.exists(requestedDocument, function(exists) {
+	fs.exists(requestedDocument, function(exists) {
 		if (!exists) {
 			var output = fillTemplate(defaults.template, pageContent.notFound);
 			//res.setHeader('Content-Length', output.length);
