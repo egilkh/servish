@@ -41,17 +41,18 @@ var defaults = {
   },
 
   // a quite simple HTML5 template
-  template:
-'<!DOCTYPE html>\n\
-<html>\n\
-<head>\n\
-  <title>{title}</title>\n\
-</head>\n\
-<body>\n\n\
-<h1>{title}</h1>\n\
-{content}\n\
-\n</body>\n\
-</html>'
+  template: [
+    '<!DOCTYPE html>',
+    '<html>',
+    '<head>',
+      '<title>{title}</title>',
+    '</head>',
+    '<body>',
+    '<h1>{title}</h1>',
+    '{content}',
+    '</body>',
+    '</html>',
+  ].join('\n')
 }
 
 // basic content for the various templates
@@ -76,7 +77,7 @@ var documentRoot = process.cwd();
 // functions
 var fillTemplate = function (template, values) {
   var t = template;
-  for (v in values) {
+  for (var v in values) {
     t = swapRecursive(t, '{' + v + '}', values[v]);
   }
   return t;
@@ -151,7 +152,7 @@ var requestCallback = function (req, res) {
             var dirname = req.url + (req.url[req.url.length - 1] !== '/' ? '/' : '');
 
             page.content = '<ul>\n';
-            for (f in files) {
+            for (var f in files) {
               if (files[f].substr(0, 1) == "." && !defaults.showHidden) {
                 continue;
               }
@@ -213,7 +214,7 @@ server.on('error', function (e) {
   }
 }).listen(currentPort, defaults.ip, function() {
   serverBound(this);
-});;
+});
 
 process.on('SIGINT', function () {
   util.log('Got SIGINT, shuting down.');
