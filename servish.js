@@ -145,13 +145,15 @@ var requestCallback = function (req, res) {
               content:""
             };
 
+            var dirname = req.url + (req.url[req.url.length - 1] !== '/' ? '/' : '');
+
             page.content = '<ul>\n';
             for (f in files) {
               if (files[f].substr(0, 1) == "." && !defaults.showHidden) {
                 continue;
               }
 
-              page.content += '\t<li><a href="' + files[f] + '">' + files[f] + '</a></li>\n';
+              page.content += '\t<li><a href="' + dirname + files[f] + '">' + files[f] + '</a></li>\n';
             }
             page.content += '</ul>\n';
 
