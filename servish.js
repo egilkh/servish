@@ -1,7 +1,11 @@
 #!/usr/bin/env node
+
 /**
  * A slightly simple webserver for serving a folder.
  */
+
+'use strict';
+
 // requires
 var http = require('http');
 var util = require('util');
@@ -53,7 +57,7 @@ var defaults = {
     '</body>',
     '</html>',
   ].join('\n')
-}
+};
 
 // basic content for the various templates
 var pageContent = {
@@ -146,14 +150,14 @@ var requestCallback = function (req, res) {
 
             var page = {
               title:requestUrl.pathname,
-              content:""
+              content:'',
             };
 
             var dirname = req.url + (req.url[req.url.length - 1] !== '/' ? '/' : '');
 
             page.content = '<ul>\n';
             for (var f in files) {
-              if (files[f].substr(0, 1) == "." && !defaults.showHidden) {
+              if (files[f].substr(0, 1) === '.' && !defaults.showHidden) {
                 continue;
               }
 
@@ -199,7 +203,7 @@ if (defaults.port.last < defaults.port.first) {
 var server = http.createServer(requestCallback);
 var currentPort = defaults.port.first;
 server.on('error', function (e) {
-  if (e.code == "EADDRINUSE") { // probably a port problem
+  if (e.code === 'EADDRINUSE') { // probably a port problem
     if ((currentPort + 1) == defaults.port.last) {
       util.log('No port in range to bind to, exiting.');
       process.exit(1);
@@ -220,3 +224,4 @@ process.on('SIGINT', function () {
   util.log('Got SIGINT, shuting down.');
   server.close();
 });
+
