@@ -220,8 +220,18 @@ server.on('error', function (e) {
   serverBound(this);
 });
 
+// Allows graceful shutdown on Windows.
+// From: http://stackoverflow.com/a/14861513
+if (process.platform === 'win32') {
+  require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  }).on('SIGINT', function () {
+    process.emit('SIGINT');
+  });
+}
+
 process.on('SIGINT', function () {
   util.log('Got SIGINT, shuting down.');
   server.close();
 });
-
