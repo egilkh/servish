@@ -14,4 +14,4 @@ My first Node.js project.
 
 ## Usage
 
-In the folder you wish to serve use `servish` and it will be served.
+In the folder you wish to serve and use `servish` and it will be served.
