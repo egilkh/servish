@@ -38,7 +38,7 @@ var defaults = {
       '.json': 'application/json; charset=utf-8',
       '.png': 'image/png',
       '.jpg': 'image/jpg',
-      '.jpeg': 'image/jpeg',
+      '.jpeg': 'image/jpg',
       '.gif': 'image/gif',
     },
     binary: ['.jpg', '.png']
