@@ -233,5 +233,7 @@ if (process.platform === 'win32') {
 
 process.on('SIGINT', function () {
   util.log('Got SIGINT, shuting down.');
-  server.close();
+  server.close(function () {
+    process.exit();
+  });
 });
