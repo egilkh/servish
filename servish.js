@@ -37,11 +37,11 @@ var defaults = {
       '.html': 'text/html; charset=utf-8',
       '.json': 'application/json; charset=utf-8',
       '.png': 'image/png',
-      '.jpg': 'image/jpg',
-      '.jpeg': 'image/jpg',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
       '.gif': 'image/gif',
     },
-    binary: ['.jpg', '.png']
+    binary: ['.jpg', '.jpeg', '.png', '.gif']
   },
 
   // a quite simple HTML5 template
