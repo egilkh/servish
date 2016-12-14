@@ -28,6 +28,8 @@ var defaults = {
   // should we show hidden files/folders (. files)
   showHidden: false,
 
+  rewriteToIndex: false,
+
   // default mime types, what I plan to serve ze best
   mime: {
     types: {
@@ -76,6 +78,14 @@ var pageContent = {
   }
 };
 
+// Check args
+process.argv.forEach(function (arg) {
+  if (arg === '--rewrite') {
+    util.log('Servish, will be rewriting 404 to index.html');
+    defaults.rewriteToIndex = true;
+  }
+});
+
 // basepath for this one
 var documentRoot = process.cwd();
 
@@ -100,97 +110,136 @@ var fillTemplate = function (template, values) {
   return t;
 };
 
-var requestCallback = function (req, res) {
+var serve404 = function (req, res) {
+  var output = fillTemplate(defaults.template, pageContent.notFound);
 
+  res.writeHead(404, {
+    'Content-Length': output.length,
+    'Content-Type': defaults.mime.types['.html']
+  });
+  res.end(output);
+  util.log('Served: 404 (' + req.socket.remoteAddress + ').');
+};
+
+var serveError = function (req, res) {
+  var output = fillTemplate(defaults.template, pageContent.error);
+  res.writeHead(500, {
+    'Content-Length': output.length
+  });
+  res.end(output);
+  util.log('We not sure what to do (' + req.socket.remoteAddress + ').');
+};
+
+var serveDir = function (req, res, dir) {
+  var requestUrl = url.parse(req.url);
+
+  fs.readdir(dir, function(err, files) {
+    if (err) { throw err; }
+
+    var page = {
+      title: requestUrl.pathname,
+      content: '',
+    };
+
+    var dirname = req.url + (req.url[req.url.length - 1] !== '/' ? '/' : '');
+
+    page.content = '<ul>\n';
+    for (var f in files) {
+      if (!files.hasOwnProperty(f)) {
+        continue;
+      }
+
+      if (files[f].substr(0, 1) === '.' && !defaults.showHidden) {
+        continue;
+      }
+
+      page.content += '\t<li><a href="' + dirname + files[f] + '">' + files[f] + '</a></li>\n';
+    }
+    page.content += '</ul>\n';
+
+    var output = fillTemplate(defaults.template, page);
+    res.writeHead(200, {
+      'Content-Type': defaults.mime.types['.html'],
+      'Content-Length': output.length
+    });
+    res.end(output);
+    util.log('Served: Directory Listing (' + req.socket.remoteAddress + ').');
+  });
+};
+
+var serveFile = function (req, res, file) {
+  fs.stat(file, function(err, stats) {
+    if (err) { throw err; }
+
+    if (stats.isFile()) {
+
+      var ext = path.extname(path.basename(file));
+      var mime = defaults.mime.types[ext] ? defaults.mime.types[ext] : defaults.mime.types['.txt'];
+
+      res.writeHead(200, {
+        'Content-Type': mime,
+        'Content-Length': stats.size
+      });
+
+      var readOptions = {};
+      if (defaults.mime.binary.indexOf(ext) === -1) {
+        readOptions.encoding = 'utf8';
+      }
+      // create stream and pipe it, closes res when done
+      // TODO Fix sending of binary content ?
+      fs.createReadStream(file, readOptions)
+      .on('end', function () {
+        util.log('Served: ' + this.path + '(' + req.socket.remoteAddress + ').');
+      }).on('error', function(ex){
+        // TODO
+        util.log('Error reading stream, ex: ' + ex);
+      }).pipe(res);
+
+    } else if (stats.isDirectory()) {
+      return serveDir(req, res, file);
+    } else {
+      return serveError(req, res);
+    }
+  });
+};
+
+var serveRewrite = function (req, res) {
+  util.log('Servish, rewriting');
+  var indexFile = path.join(documentRoot, 'index.html');
+
+  fs.exists(indexFile, function (indexExists) {
+    if (indexExists) {
+      return serveFile(req, res, indexFile);
+    } else {
+      return serve404(req, res);
+    }
+  });
+
+  return;
+};
+
+var requestCallback = function (req, res) {
   res.setHeader('Connection', 'close'); // we no accept long calls
 
-  var requestUrl = url.parse(req.url);
-  var requestedDocument = path.join(documentRoot, requestUrl.pathname);
-
-  var remoteAddress = req.socket.remoteAddress;
+  var requestUrl = url.parse(req.url),
+      requestedDocument = path.join(documentRoot, requestUrl.pathname),
+      remoteAddress = req.socket.remoteAddress;
 
   util.log('Connection from client: ' + requestUrl.pathname  + ' (' + remoteAddress + ').');
 
+  if (requestUrl === '/' && defaults.rewriteToIndex) {
+    return serveRewrite(req, res);
+  }
+
   fs.exists(requestedDocument, function(exists) {
     if (!exists) {
-      var output = fillTemplate(defaults.template, pageContent.notFound);
-      //res.setHeader('Content-Length', output.length);
-      //res.setHeader('Content-Type', defaults.mime.types['.html']);
-      res.writeHead(404, {
-        'Content-Length': output.length,
-        'Content-Type': defaults.mime.types['.html']
-      });
-      res.end(output);
-      util.log('Served: 404 (' + remoteAddress + ').');
+      if (defaults.rewriteToIndex) {
+        return serveRewrite(req, res);
+      }
+
+      return serve404(req, res);
     } else {
-      fs.stat(requestedDocument, function(err, stats) {
-        if (err) { throw err; }
-        if (stats.isFile()) {
-
-          var ext = path.extname(path.basename(requestedDocument));
-          var mime = defaults.mime.types[ext] ? defaults.mime.types[ext] : defaults.mime.types['.txt'];
-
-          res.writeHead(200, {
-            'Content-Type': mime,
-            'Content-Length': stats.size
-          });
-
-          var readOptions = {};
-          if (defaults.mime.binary.indexOf(ext) === -1) {
-            readOptions.encoding = 'utf8';
-          }
-          // create stream and pipe it, closes res when done
-          // TODO Fix sending of binary content ?
-          fs.createReadStream(requestedDocument, readOptions)
-          .on('end', function () {
-            util.log('Served: ' + this.path + '(' + remoteAddress + ').');
-          }).on('error', function(ex){
-            // TODO
-            util.log('Error reading stream, ex: ' + ex);
-          }).pipe(res);
-
-        } else if (stats.isDirectory()) {
-          fs.readdir(requestedDocument, function(err, files) {
-            if (err) { throw err; }
-
-            var page = {
-              title:requestUrl.pathname,
-              content:'',
-            };
-
-            var dirname = req.url + (req.url[req.url.length - 1] !== '/' ? '/' : '');
-
-            page.content = '<ul>\n';
-            for (var f in files) {
-              if (!files.hasOwnProperty(f)) {
-                continue;
-              }
-              
-              if (files[f].substr(0, 1) === '.' && !defaults.showHidden) {
-                continue;
-              }
-
-              page.content += '\t<li><a href="' + dirname + files[f] + '">' + files[f] + '</a></li>\n';
-            }
-            page.content += '</ul>\n';
-
-            var output = fillTemplate(defaults.template, page);
-            res.writeHead(200, {
-              'Content-Type': defaults.mime.types['.html'],
-              'Content-Length': output.length
-            });
-            res.end(output);
-            util.log('Served: Directory Listing (' + remoteAddress + ').');
-          });
-        } else {
-          var output = fillTemplate(defaults.template, pageContent.error);
-          res.writeHead(500, {
-            'Content-Length': output.length
-          });
-          res.end(output);
-          util.log('We nowt sure what to do (' + remoteAddress + ').');
-        }
-      });
+      return serveFile(req, res, requestedDocument);
     }
   });
 };
