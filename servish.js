@@ -80,18 +80,22 @@ var pageContent = {
 var documentRoot = process.cwd();
 
 // functions
-var fillTemplate = function (template, values) {
-  var t = template;
-  for (var v in values) {
-    t = swapRecursive(t, '{' + v + '}', values[v]);
-  }
-  return t;
-};
-
 var swapRecursive = function (t, from, to) {
   t = t.replace(from, to);
   if (t.indexOf(from) > -1) {
     t = swapRecursive(t, from, to);
+  }
+  return t;
+};
+
+var fillTemplate = function (template, values) {
+  var t = template;
+  for (var v in values) {
+    if (!values.hasOwnProperty(v)) {
+      continue;
+    }
+
+    t = swapRecursive(t, '{' + v + '}', values[v]);
   }
   return t;
 };
@@ -158,6 +162,10 @@ var requestCallback = function (req, res) {
 
             page.content = '<ul>\n';
             for (var f in files) {
+              if (!files.hasOwnProperty(f)) {
+                continue;
+              }
+              
               if (files[f].substr(0, 1) === '.' && !defaults.showHidden) {
                 continue;
               }
@@ -205,14 +213,15 @@ var server = http.createServer(requestCallback);
 var currentPort = defaults.port.first;
 server.on('error', function (e) {
   if (e.code === 'EADDRINUSE') { // probably a port problem
-    if ((currentPort + 1) == defaults.port.last) {
+    if ((currentPort + 1) === defaults.port.last) {
       util.log('No port in range to bind to, exiting.');
       process.exit(1);
     }
     util.log('Servish, port in use. Retrying in 1s.');
     setTimeout(function() {
       server.removeAllListeners('listening'); // prevent double listening event
-      server.listen(++currentPort, defaults.ip, function() {
+      currentPort = currentPort + 1;
+      server.listen(currentPort, defaults.ip, function() {
         serverBound(this);
       });
     }, 1000);
