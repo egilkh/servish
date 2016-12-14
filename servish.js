@@ -172,7 +172,6 @@ var serveFile = function (req, res, file) {
     if (err) { throw err; }
 
     if (stats.isFile()) {
-
       var ext = path.extname(path.basename(file));
       var mime = defaults.mime.types[ext] ? defaults.mime.types[ext] : defaults.mime.types['.txt'];
 
@@ -194,7 +193,6 @@ var serveFile = function (req, res, file) {
         // TODO
         util.log('Error reading stream, ex: ' + ex);
       }).pipe(res);
-
     } else if (stats.isDirectory()) {
       return serveDir(req, res, file);
     } else {
@@ -227,7 +225,7 @@ var requestCallback = function (req, res) {
 
   util.log('Connection from client: ' + requestUrl.pathname  + ' (' + remoteAddress + ').');
 
-  if (requestUrl === '/' && defaults.rewriteToIndex) {
+  if (requestUrl.pathname === '/' && defaults.rewriteToIndex) {
     return serveRewrite(req, res);
   }
 
