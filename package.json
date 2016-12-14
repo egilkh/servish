@@ -1,6 +1,6 @@
 {
   "name": "servish",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A simple webserver for serving a single folder.",
   "main": "servish.js",
   "bin" : { "servish" : "./servish.js" },
